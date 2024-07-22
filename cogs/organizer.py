@@ -223,7 +223,7 @@ class Organizer(commands.Cog):
             execute_query(f"UPDATE teams SET teams.score_adjustment = teams.score_adjustment + {correcting_score} "
                           f"WHERE teams.id = {team_id}")
             await interaction.response.send_message(f"Очки команды **{interaction.channel.name}** "
-                                                    f"были скорректированы на {correcting_score}", ephemeral=True)
+                                                    f"были скорректированы на **{correcting_score}**", ephemeral=True)
         except disnake.DiscordException as ex:
             await interaction.response.send_message(f"Bruh. Что-то пошло не так. Напиши разработчику\n"
                                                     f"Ошибка: {ex}", ephemeral=True)
