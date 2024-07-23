@@ -34,7 +34,7 @@ class Marathon(commands.Cog):
                                     "- текст",
                                     view=welcome_view)
         await interaction.send("Отправили старт марафона")
-        await welcome_view.wait()
+        # await welcome_view.wait()
 
     # обработчик ошибок при недостатке прав выполнения команды marathon-start
     @start_marathon.error
@@ -43,6 +43,7 @@ class Marathon(commands.Cog):
 
 
 # TODO несрочно | сделать грамотное отражение времени (в дискорде чтоб дата показывалась)
+# https://www.youtube.com/watch?v=5cl_2xAyG0w&list=PLcsmHdQZxRKB7b8zKb2-aq9j3y7pZkQmP&index=7
 def get_time_until_start():
     now = datetime.now()
     remaining_time = MARATHON_START_DATE - now
@@ -76,6 +77,7 @@ class WelcomeMarathonButton(disnake.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
         self.value = None  # true - регистрация; false - задать вопрос (мб исправить это потом)
+        # TODO сделать кнопку «задать вопрос»
 
     @disnake.ui.button(label="Марафон отдыха", style=disnake.ButtonStyle.blurple, emoji="⛵")
     async def welcomeMarathonButton(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
@@ -210,6 +212,8 @@ class TimezonesDropdown(disnake.ui.StringSelect):
         )
 
     async def callback(self, inter: disnake.MessageInteraction):
+        # TODO кажется, можно сделать взятие GMT без костылей split -> использовать в SelectOption параметр value
+        # типа disnake.SelectOption(label="GMT+12 ~ Камчатка, Окленд", value="12", emoji="🕛"), но это не точно
         choice_leader_position_view = ChoiceLeaderPositionMarathonButton(int(self.values[0].split()[0][3:6]))
         choice_leader_position_embed = disnake.Embed(
             title="Вы можете стать лидером своей команды",

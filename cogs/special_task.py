@@ -124,6 +124,7 @@ class SpecialTaskButton(disnake.ui.View):
                                    f"Отмечено `{len(special_task_view.pass_members)} участников`",
                            view=non_clickable_button, embed=self.embed)
 
+        # TODO изменить test_name в отчете
         # добавляем спец отчет команды в БД
         execute_query(f"INSERT INTO special_tasks (name, team_id, complete_members) "
                       f"VALUES (\"test_name\", {team_id}, {len(special_task_view.pass_members)})")

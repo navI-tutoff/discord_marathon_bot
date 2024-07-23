@@ -1,4 +1,5 @@
 import disnake
+from disnake import ModalInteraction
 
 from cogs.marathon_views import *
 
@@ -228,6 +229,148 @@ class Organizer(commands.Cog):
             await interaction.response.send_message(f"Bruh. Что-то пошло не так. Напиши разработчику\n"
                                                     f"Ошибка: {ex}", ephemeral=True)
             print(ex)
+
+    # ============================== лучшие практики ==============================
+    # отправляет кнопку для лучших практик
+    @commands.slash_command(name="marathon-best-practise", description="Опубликовать кнопку для лучших практик",
+                            options=[
+                                disnake.Option(
+                                    name="practise_name",
+                                    description="Название практики",
+                                    type=disnake.OptionType.string,
+                                    required=True
+                                ),
+                                disnake.Option(
+                                    name="task_1",
+                                    description="Текст задания №1",
+                                    type=disnake.OptionType.string,
+                                    required=True
+                                ),
+                                disnake.Option(
+                                    name="task_2",
+                                    description="Текст задания №2",
+                                    type=disnake.OptionType.string,
+                                    required=False
+                                ),
+                                disnake.Option(
+                                    name="task_3",
+                                    description="Текст задания №3",
+                                    type=disnake.OptionType.string,
+                                    required=False
+                                )
+                            ],
+                            default_member_permissions=disnake.Permissions(mention_everyone=True))
+    @commands.has_role(ORGANIZER_ROLE_ID)
+    async def best_practise(self, interaction: disnake.ApplicationCommandInteraction,
+                            practise_name: str, task_1: str, task_2: str = None, task_3: str = None):
+        try:
+            marathon_role = interaction.guild.get_role(MARATHON_ROLE_ID)
+
+            tasks_format_text = f"# 🎯 Задания\n1. {task_1}\n"
+
+            if task_2 is not None:
+                tasks_format_text += f"2. {task_2}\n"
+
+                if task_3 is not None:
+                    tasks_format_text += f"3. {task_3}\n"
+
+            tasks_format_text += f"\n{marathon_role.mention}"
+
+            check_task_text_view = Organizer.CheckTaskTextButton(practise_name, tasks_format_text)
+            await interaction.response.send_message("## Убедитесь в правильности написания текста ✍\n"
+                                                    f"{tasks_format_text}", view=check_task_text_view, ephemeral=True)
+
+        except disnake.DiscordException as ex:
+            await interaction.response.send_message(f"Bruh. Что-то пошло не так. Напиши разработчику\n"
+                                                    f"Ошибка: {ex}", ephemeral=True)
+            print(ex)
+
+    class CheckTaskTextButton(disnake.ui.View):
+        def __init__(self, practise_name, tasks_format_text):
+            super().__init__()
+            self.practise_name = practise_name
+            self.tasks_format_text = tasks_format_text
+            self.practise_thread = None
+
+        @disnake.ui.button(label="Опубликовать задание", style=disnake.ButtonStyle.green, emoji="✅")
+        async def publish_task(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
+            submit_practise_view = Organizer.SubmitPractiseButton(self.practise_name, self)
+            message = await interaction.channel.send(self.tasks_format_text, view=submit_practise_view)
+            # TODO сделать отслеживание каждой кнопки для спец.заданий ->
+            # думаю, это должно работать через запоминание сообщений с кнопками в БД
+            # затем при старте бота подгружать все сообщения, в них обновлять view SubmitPractiseButton
+            # несложно должно быть
+
+            self.practise_thread = await interaction.channel.create_thread(name=self.practise_name, message=message,
+                                                                           auto_archive_duration=disnake.ThreadArchiveDuration.day)
+            await interaction.response.defer()
+            await interaction.delete_original_message()
+            self.stop()
+
+        @disnake.ui.button(label="Отменить публикацию", style=disnake.ButtonStyle.gray, emoji="❌")
+        async def cancel_publish(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
+            await interaction.response.defer()
+            await interaction.delete_original_message()
+            self.stop()
+
+    class SubmitPractiseButton(disnake.ui.View):
+        def __init__(self, practise_name, prev_view):
+            super().__init__()
+            self.practise_name = practise_name
+            self.prev_view = prev_view
+
+        @disnake.ui.button(label="Выполнить", style=disnake.ButtonStyle.green, emoji="📋")
+        async def submit_practise(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
+            user_id = read_query(f"SELECT id FROM users WHERE users.name = \"{interaction.author.name}\"")
+            if user_id:
+                user_id = user_id[0][0]  # получаем в удобном формате
+            else:
+                await interaction.response.send_message(f"Что-то пошло не так. Обратитесь к модераторам",
+                                                        ephemeral=True)
+                return
+
+            input_practise_text_modal = Organizer.InputPractiseTextModal(self.practise_name,
+                                                                         self.prev_view.practise_thread, user_id)
+            await interaction.response.send_modal(input_practise_text_modal)
+
+    class InputPractiseTextModal(disnake.ui.Modal):
+        def __init__(self, practise_name, practise_thread, user_id):
+            self.practise_name = practise_name
+            self.practise_thread = practise_thread
+            self.user_id = user_id
+            components = [
+                disnake.ui.TextInput(label="Опишите проделанную работу", max_length=4000, custom_id="practise_text")
+            ]
+            super().__init__(title="Отчет по заданию", components=components, custom_id="practiseTextModal")
+
+        async def callback(self, interaction: ModalInteraction):
+            # добавление выполнения отчета в БД
+            # проверяем, есть ли ранее сданные отчеты
+            is_exist_user_id = read_query(f"SELECT user_id FROM practise_reports "
+                                          f"WHERE practise_reports.user_id = {self.user_id}")
+            if is_exist_user_id:  # если запись в БД есть, обновляем старую запись
+                is_exist_user_id = is_exist_user_id[0][0]  # получаем в удобном формате
+                execute_query(f"UPDATE practise_reports SET practise_reports.done_practises = CONCAT(done_practises, "
+                              f"\"{self.practise_name.split()[0][1:3]}, \")"
+                              f"WHERE practise_reports.user_id = {is_exist_user_id}")
+            else:  # если записи в БД не было, делаем вставку новой
+                execute_query(f"INSERT INTO practise_reports (user_id, done_practises) "
+                              f"VALUES ({self.user_id}, \"{self.practise_name.split()[0][1:3]}, \")")
+
+            # отправляем отчёт в ветку
+            practise_text = interaction.text_values["practise_text"]
+            practise_report_embed = disnake.Embed(
+                description=practise_text,
+                color=0x44944b
+            )
+            practise_report_embed.set_author(name=interaction.author.display_name,
+                                             icon_url=interaction.author.avatar.url)
+
+            await self.practise_thread.send(f"Отчёт {interaction.author.mention}", embed=practise_report_embed)
+
+            # TODO всё равно видно в общем чате. Надо переработать
+            await interaction.response.defer()
+            await interaction.delete_original_message()
 
     # ===================== обработчики ошибок =====================
 

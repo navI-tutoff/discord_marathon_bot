@@ -1,9 +1,16 @@
 import pymysql
 
-host = "danilcwr.beget.tech"
+# вкладка облако
+host = "gobakepur.beget.app"
 user = "danilcwr_ds_bot"
 db_name = "danilcwr_ds_bot"
-password = "Danil890408"
+password = "ClTJuW*5TbIa"
+
+# вкладка хостинг
+# host = "danilcwr.beget.tech"
+# user = "danilcwr_ds_bot"
+# db_name = "danilcwr_ds_bot"
+# password = "Danil890408"
 
 
 def connect() -> pymysql.connect:
