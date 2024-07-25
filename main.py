@@ -23,7 +23,7 @@ async def on_ready():
     # await bot.change_presence(activity=disnake.Game('развитие'))
 
     # ===================== отслеживание кнопок =====================
-    # кнопка для регистрации на марафон
+    # кнопка регистрации на марафон
     main_channel = bot.get_channel(REG_MARATHON_CHAT_ID)
     if main_channel:
         message = await main_channel.fetch_message(REG_MARATHON_MSG_ID)
@@ -36,12 +36,10 @@ async def on_ready():
     if practise_channel:
         practise_buttons = read_query(f"SELECT practise_name, message_id FROM practises")
         for button in practise_buttons:
-            print(button[1])
             message = await practise_channel.fetch_message(int(button[1]))
             if message:
                 submit_practise = Organizer.SubmitPractiseButton()
                 await message.edit(view=submit_practise)
-
 
 
 # команда для загрузки когов

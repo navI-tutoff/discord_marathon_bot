@@ -295,11 +295,6 @@ class Organizer(commands.Cog):
         async def publish_task(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
             submit_practise_view = Organizer.SubmitPractiseButton()
             message = await interaction.channel.send(self.tasks_format_text, view=submit_practise_view)
-            # TODO сделать отслеживание каждой кнопки для спец.заданий ->
-            # думаю, это должно работать через запоминание сообщений с кнопками в БД
-            # затем при старте бота подгружать все сообщения, в них обновлять view SubmitPractiseButton
-            # несложно должно быть
-
             practise_thread = await interaction.channel.create_thread(name=self.practise_name, message=message,
                                                                       auto_archive_duration=disnake.ThreadArchiveDuration.day)
 

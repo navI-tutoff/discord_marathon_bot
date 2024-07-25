@@ -1,5 +1,3 @@
-from disnake import MessageInteraction
-
 from main import disnake
 from main import commands
 

@@ -4,6 +4,8 @@ from main import commands
 from db_config import execute_query
 from db_config import read_query
 
+from defines_config import MAIN_COMMUNICATION_MARATHON_CHAT_ID
+
 from datetime import timedelta
 
 
@@ -13,6 +15,12 @@ class Reports(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message):
+        if (message.channel.type != disnake.ChannelType.private_thread or
+                message.channel.parent_id != MAIN_COMMUNICATION_MARATHON_CHAT_ID):
+            return  # не слушаем сообщение, если оно не в канале главного общего чата марафона (или его ветках)
+
+        print(1)
+
         try:
             if message.content.split()[0].lower() in ["отчет", "отчёт"]:
                 received_data = read_query(f"SELECT id, team_id FROM users "

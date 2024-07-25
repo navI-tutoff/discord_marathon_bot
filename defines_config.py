@@ -14,4 +14,4 @@ MAIN_COMMUNICATION_MARATHON_CHAT_ID = 1247584889306353726
 REG_MARATHON_MSG_ID = 1250143112064536669  # id начального марафонского сообщения
 
 # дата начала марафона
-MARATHON_START_DATE = datetime(2024, 7, 24, 0, 0, 0)
+MARATHON_START_DATE = datetime(2024, 7, 26, 0, 0, 0)

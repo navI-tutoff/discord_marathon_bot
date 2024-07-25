@@ -12,6 +12,8 @@ from disnake.ext import commands
 
 from defines_config import ORGANIZER_ROLE_ID
 from defines_config import REG_MARATHON_CHAT_ID
+from defines_config import MAIN_COMMUNICATION_MARATHON_CHAT_ID
+from defines_config import PRACTISE_CHAT_ID
 
 from errors_handling import check_missing_role
 
@@ -162,16 +164,20 @@ class ChoiceFormatMarathonButton(disnake.ui.View):
         self.stop()
 
     @disnake.ui.button(label="Свободное участие", style=disnake.ButtonStyle.blurple, emoji="📚")
-    async def solo_button(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
+    async def solo_button(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
         successful_reg_embed = disnake.Embed(
             title="Теперь вы участник марафона!",
-            description="Следите за новостями марафона в **LINK**. Вам придёт уведомление, "
-                        "когда выйдет первый пост с заданиями в **LINK**. Пока напишите о целях на марафон "
-                        "и пообщайтесь с участниками в **LINK**",
+            description=f"Следите за новостями марафона в {interaction.guild.get_channel(PRACTISE_CHAT_ID).mention}. "
+                        f"Вам придёт уведомление, когда выйдет первый пост с заданиями. Пока напишите о целях "
+                        f"на марафон и пообщайтесь с участниками в "
+                        f"{interaction.guild.get_channel(MAIN_COMMUNICATION_MARATHON_CHAT_ID).mention}",
             color=0x7aefb0
         )
-        execute_query(f"INSERT INTO users (name, team_id, is_leader) VALUES (\"{inter.author.name}\", NULL, 0);")
-        await inter.response.edit_message("", view=None, embed=successful_reg_embed)
+
+        await give_role(interaction)
+
+        execute_query(f"INSERT INTO users (name, team_id, is_leader) VALUES (\"{interaction.author.name}\", NULL, 0);")
+        await interaction.response.edit_message("", view=None, embed=successful_reg_embed)
         self.stop()
 
 
@@ -231,41 +237,46 @@ class TimezonesDropdownView(disnake.ui.View):
         self.add_item(TimezonesDropdown())
 
 
+async def give_role(interaction: disnake.MessageInteraction):
+    guild = interaction.user.guild
+    role = guild.get_role(MARATHON_ROLE_ID)
+    await interaction.author.add_roles(role)  # важно, чтобы роль бота в списке ролей была выше марафонской роли
+
+
 # view выбора лидерской позиции (лидер/участник), затем конец регистрации
 class ChoiceLeaderPositionMarathonButton(disnake.ui.View):
     def __init__(self, timezone):
         super().__init__()
         self.timezone = timezone
-        self.successful_reg_embed = disnake.Embed(
+
+    def get_successful_reg_embed(self, interaction: disnake.MessageInteraction):
+        return disnake.Embed(
             title="Успешная регистрация на марафоне",
-            description="Вам придет уведомление, когда мы создадим чат вашей команды. "
-                        "Следите за новостями марафона в LINK. Напишите о целях на марафон и пообщайтесь с "
-                        "другими участниками в LINK",
+            description=f"Вам придет уведомление, когда мы создадим чат вашей команды. "
+                        f"Следите за новостями марафона в {interaction.guild.get_channel(PRACTISE_CHAT_ID).mention}."
+                        f" Напишите о целях на марафон и пообщайтесь с другими участниками в "
+                        f"{interaction.guild.get_channel(MAIN_COMMUNICATION_MARATHON_CHAT_ID).mention}",
             color=0x7aefb0
         )
 
-    async def give_role(self, inter: disnake.MessageInteraction):
-        guild = inter.user.guild
-        role = guild.get_role(MARATHON_ROLE_ID)
-        await inter.author.add_roles(role)  # важно, чтобы роль бота в списке ролей была выше марафонской роли
-
     @disnake.ui.button(label="Хочу быть лидером команды", style=disnake.ButtonStyle.green, emoji="👨‍🏫")
-    async def leader_button(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
+    async def leader_button(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
         execute_query(f"INSERT INTO users (name, team_id, timezone, is_leader) "
-                      f"VALUES (\"{inter.author.name}\", -1, {self.timezone}, 1);")
-        await self.give_role(inter)
+                      f"VALUES (\"{interaction.author.name}\", -1, {self.timezone}, 1);")
+        await give_role(interaction)
 
-        await inter.response.edit_message("", view=None, embed=self.successful_reg_embed)
+        await interaction.response.edit_message("", view=None, embed=self.get_successful_reg_embed(interaction))
         self.stop()
 
     @disnake.ui.button(label="Хочу быть участником команды", style=disnake.ButtonStyle.green, emoji="🙍‍♂️")
-    async def member_button(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
+    async def member_button(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
         execute_query(f"INSERT INTO users (name, team_id, timezone, is_leader) "
-                      f"VALUES (\"{inter.author.name}\", -1, {self.timezone}, 0);")
-        await self.give_role(inter)
+                      f"VALUES (\"{interaction.author.name}\", -1, {self.timezone}, 0);")
+        await give_role(interaction)
 
-        await inter.response.edit_message("", view=None, embed=self.successful_reg_embed)
+        await interaction.response.edit_message("", view=None, embed=self.get_successful_reg_embed(interaction))
         self.stop()
+
 
 def setup(bot):
     bot.add_cog(Marathon(bot))
