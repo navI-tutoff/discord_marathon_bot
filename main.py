@@ -3,9 +3,11 @@ import disnake
 from disnake.ext import commands
 
 from cogs.marathon_views import *
+from cogs.organizer import Organizer
 
 from defines_config import REG_MARATHON_MSG_ID
 from defines_config import REG_MARATHON_CHAT_ID
+from defines_config import PRACTISE_CHAT_ID
 
 # === intents ===
 # intents = disnake.Intents.default()
@@ -20,13 +22,26 @@ async def on_ready():
     print(f"Bot {bot.user} is ready!\n")
     # await bot.change_presence(activity=disnake.Game('развитие'))
 
-    # отслеживание
-    channel = bot.get_channel(REG_MARATHON_CHAT_ID)
-    if channel:
-        message = await channel.fetch_message(REG_MARATHON_MSG_ID)
+    # ===================== отслеживание кнопок =====================
+    # кнопка для регистрации на марафон
+    main_channel = bot.get_channel(REG_MARATHON_CHAT_ID)
+    if main_channel:
+        message = await main_channel.fetch_message(REG_MARATHON_MSG_ID)
         if message:
             welcome_view = WelcomeMarathonButton()
             await message.edit(view=welcome_view)
+
+    # кнопки лучших практик
+    practise_channel = bot.get_channel(PRACTISE_CHAT_ID)
+    if practise_channel:
+        practise_buttons = read_query(f"SELECT practise_name, message_id FROM practises")
+        for button in practise_buttons:
+            print(button[1])
+            message = await practise_channel.fetch_message(int(button[1]))
+            if message:
+                submit_practise = Organizer.SubmitPractiseButton()
+                await message.edit(view=submit_practise)
+
 
 
 # команда для загрузки когов
