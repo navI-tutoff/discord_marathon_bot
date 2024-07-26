@@ -1,6 +1,6 @@
 import os
 import disnake
-from disnake.ext import commands
+from disnake.ext import commands, tasks
 
 from cogs.marathon_views import *
 from cogs.organizer import Organizer

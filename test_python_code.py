@@ -4,3 +4,5 @@ def f(el: int):
 
 a = 123
 f(a)
+
+

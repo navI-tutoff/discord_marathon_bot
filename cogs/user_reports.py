@@ -19,8 +19,6 @@ class Reports(commands.Cog):
                 message.channel.parent_id != MAIN_COMMUNICATION_MARATHON_CHAT_ID):
             return  # не слушаем сообщение, если оно не в канале главного общего чата марафона (или его ветках)
 
-        print(1)
-
         try:
             if message.content.split()[0].lower() in ["отчет", "отчёт"]:
                 received_data = read_query(f"SELECT id, team_id FROM users "
