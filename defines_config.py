@@ -16,4 +16,4 @@ REG_MARATHON_MSG_ID = 1250143112064536669  # id начального мараф�
 LEADERBOARD_MSG_ID = 1266403921128198315  # id leaderboard сообщения
 
 # дата начала марафона
-MARATHON_START_DATE = datetime(2024, 7, 26, 0, 0, 0)
+MARATHON_START_DATE = datetime(2024, 7, 29, 0, 0, 0)
