@@ -373,9 +373,7 @@ class Organizer(commands.Cog):
             practise_thread = interaction.guild.get_thread(interaction.message.id)
             await practise_thread.send(f"Отчёт {interaction.author.mention}", embed=practise_report_embed)
 
-            # TODO всё равно видно в общем чате. Надо переработать
-            await interaction.response.defer()
-            await interaction.delete_original_message()
+            await interaction.response.defer(with_message=False)
 
     # ===================== обработчики ошибок =====================
 

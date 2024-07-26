@@ -28,6 +28,7 @@ class Leaderboard(commands.Cog):
             elif counter == 3:
                 description += "🥉 "
 
+            # TODO сделать красивое форматирование
             description += f"{counter}. {team[0]}: {team[1]}\n"
             counter += 1
 

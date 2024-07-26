@@ -2,18 +2,16 @@ import disnake
 
 from datetime import datetime
 
+from disnake import ModalInteraction
+
 from db_config import execute_query
 from db_config import read_query
 
-from defines_config import MARATHON_ROLE_ID
-from defines_config import MARATHON_START_DATE
-
 from disnake.ext import commands
 
-from defines_config import ORGANIZER_ROLE_ID
-from defines_config import REG_MARATHON_CHAT_ID
-from defines_config import MAIN_COMMUNICATION_MARATHON_CHAT_ID
-from defines_config import PRACTISE_CHAT_ID
+from defines_config import MARATHON_START_DATE
+from defines_config import REG_MARATHON_CHAT_ID, MAIN_COMMUNICATION_MARATHON_CHAT_ID, PRACTISE_CHAT_ID
+from defines_config import MARATHON_ROLE_ID, ORGANIZER_ROLE_ID, MODERATOR_ROLE_ID
 
 from errors_handling import check_missing_role
 
@@ -74,17 +72,14 @@ def get_time_until_start():
     return string
 
 
-# view встречающее на марафоне
+# встречающее view для регистрации на марафоне
 class WelcomeMarathonButton(disnake.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
-        self.value = None  # true - регистрация; false - задать вопрос (мб исправить это потом)
         # TODO сделать кнопку «задать вопрос»
 
     @disnake.ui.button(label="Марафон отдыха", style=disnake.ButtonStyle.blurple, emoji="⛵")
     async def welcomeMarathonButton(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
-        self.value = True
-
         time_until_start = get_time_until_start()
         received_user_data = read_query(f"SELECT * FROM users WHERE users.name = \"{inter.author.name}\"")
         if received_user_data:
@@ -97,6 +92,34 @@ class WelcomeMarathonButton(disnake.ui.View):
             await inter.response.send_message(f"## Марафон отдыха\n"
                                               f"{time_until_start}", view=reg_view,
                                               ephemeral=True)
+
+    @disnake.ui.button(label="Задать вопрос", style=disnake.ButtonStyle.gray, emoji="❓")
+    async def askQuestionButton(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
+        # await interaction.response.defer(with_message=False)
+        ask_question_modal = AskQuestionModal()
+        await interaction.response.send_modal(ask_question_modal)
+
+
+class AskQuestionModal(disnake.ui.Modal):
+    def __init__(self):
+        components = [
+            disnake.ui.TextInput(label="Введите ваш вопрос", max_length=2000, custom_id="question_text")
+        ]
+        super().__init__(title="Вопрос о марафоне", components=components, custom_id="ask_question_modal")
+
+    async def callback(self, interaction: ModalInteraction):
+        channel = interaction.channel
+        question_thread = await channel.create_thread(name="Вопрос от участника",
+                                                      type=disnake.ChannelType.private_thread)
+
+        question_text = interaction.text_values["question_text"]
+        moderator_role = interaction.guild.get_role(MODERATOR_ROLE_ID)
+        organizer_role = interaction.guild.get_role(ORGANIZER_ROLE_ID)
+        await question_thread.send(f"### Вопрос от участника {interaction.author.mention}\n\n"
+                                   f"{question_text}\n\n"
+                                   f"{moderator_role.mention}{organizer_role.mention}")
+
+        await interaction.response.defer(with_message=False)
 
 
 # шаблон для перехода на view выбора формата участия
