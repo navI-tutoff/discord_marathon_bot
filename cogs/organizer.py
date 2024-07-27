@@ -314,7 +314,7 @@ class Organizer(commands.Cog):
 
     class SubmitPractiseButton(disnake.ui.View):
         def __init__(self):
-            super().__init__()
+            super().__init__(timeout=None)
 
         @disnake.ui.button(label="Выполнить", style=disnake.ButtonStyle.green, emoji="📋")
         async def submit_practise(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):

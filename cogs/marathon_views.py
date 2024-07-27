@@ -76,7 +76,6 @@ def get_time_until_start():
 class WelcomeMarathonButton(disnake.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
-        # TODO сделать кнопку «задать вопрос»
 
     @disnake.ui.button(label="Марафон отдыха", style=disnake.ButtonStyle.blurple, emoji="⛵")
     async def welcomeMarathonButton(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
@@ -165,7 +164,8 @@ class RegMarathonButton(disnake.ui.View):
     async def regMarathonButton(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
         await choice_format_pattern(inter)
         self.stop()
-
+        # TODO после минут 13 ephemeral сообщение стало неактивным (кнопка не работает)
+        # надо либо удаление ephemeral сообщения сделать, либо так, чтоб кнопка работала
 
 # TODO если марафон начался -> только соло участие
 # view выбора формата марафона (команда/соло)
