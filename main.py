@@ -66,7 +66,6 @@ async def unload(ctx, extension):
 @commands.is_owner()
 async def reload(ctx, extension):
     bot.reload_extension(f'cogs.{extension}')
-    bot.load_extension(f'cogs.{extension}')
     await ctx.send(f'Перезагружен модуль {extension}', ephemeral=True)
 
 
@@ -75,4 +74,14 @@ for filename in os.listdir("./cogs"):
     if filename.endswith(".py"):
         bot.load_extension(f"cogs.{filename[:-3]}")
 
+
+# команда для отправления сообщения от имени бота
+@bot.slash_command(name="say", default_member_permissions=disnake.Permissions(administrator=True))
+@commands.is_owner()
+async def say(ctx, text):
+    await ctx.send(text)
+
+
 bot.run("MTI0MzgyMzAyOTE4MDY5ODY2NA.GxMCs5.y_pYr3lm5fY0x484HyMTTGbgEF48gFY3bMeY3Y")
+
+# TODO сделать try catch и т.п. обработки

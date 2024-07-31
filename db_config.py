@@ -29,12 +29,13 @@ def connect() -> pymysql.connect:
             password=password,
             database=db_name
         )
-        # print("=============== MySQL DB successfully connected ===============")
-        # print("=" * 69 + "\n")
 
         return connection
 
     except Exception as ex:
+        print("=============== MySQL DB connection failed ===============")
+        print(ex)
+    except pymysql.err.DatabaseError as ex:
         print("=============== MySQL DB connection failed ===============")
         print(ex)
 
@@ -45,7 +46,7 @@ def execute_query(query):
         with connection.cursor() as cursor:
             cursor.execute(query)
             connection.commit()
-            print(f"{query} successfully executed!")
+            print(f"Query -> \"{query}\"")
     finally:
         connection.close()
 

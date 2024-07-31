@@ -1,6 +1,6 @@
 from main import disnake, commands, tasks
 
-from db_config import execute_query, read_query
+from db_config import pymysql, execute_query, read_query
 
 from defines_config import LEADERBOARD_CHAT_ID, LEADERBOARD_MSG_ID
 
@@ -8,7 +8,12 @@ from defines_config import LEADERBOARD_CHAT_ID, LEADERBOARD_MSG_ID
 class Leaderboard(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.leaderboard.add_exception_type(disnake.DiscordException)
+        self.leaderboard.add_exception_type(pymysql.err.DatabaseError)
         self.leaderboard.start()
+
+    def cog_unload(self):
+        self.leaderboard.cancel()
 
     def get_embed(self, teams_info: [[]]):
         description = ("## 🏆 Таблица лидеров\n\n"
@@ -18,7 +23,7 @@ class Leaderboard(commands.Cog):
 
         for team in teams_info:
             if counter == 11:
-                description += "### Попуски\n"
+                description += "### Отстающие\n"
             elif counter == 4:
                 description += "### Догоняющие\n"
             elif counter == 1:
@@ -64,6 +69,9 @@ class Leaderboard(commands.Cog):
     @leaderboard.before_loop
     async def before_leaderboard(self):
         await self.bot.wait_until_ready()
+
+    # TODO сделать перезапуск в случае падения
+
 
 def setup(bot):
     bot.add_cog(Leaderboard(bot))

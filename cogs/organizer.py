@@ -23,7 +23,8 @@ class Organizer(commands.Cog):
         try:
             channel = self.bot.get_channel(MAIN_COMMUNICATION_MARATHON_CHAT_ID)
             if channel:
-                team_thread = await channel.create_thread(name=team_name, type=disnake.ChannelType.private_thread)
+                team_thread = await channel.create_thread(name=team_name, type=disnake.ChannelType.private_thread,
+                                                          invitable=False, auto_archive_duration=4320)
                 execute_query(
                     f"INSERT INTO teams (name, channel_id_str) VALUES (\"{team_name}\", \"{team_thread.id}\")")
                 await interaction.response.send_message(f"Ветка для команды **{team_thread.mention}** создана")
@@ -90,22 +91,31 @@ class Organizer(commands.Cog):
                     await inter.response.send_message(f"Пользователь {user_name.mention} принимает "
                                                       f"одиночное участие в марафоне", ephemeral=True)
                     return
-                elif user_team_id == team_id:
-                    await inter.response.send_message(f"Пользователь {user_name.mention} уже принадлежит этой команде",
+                elif user_team_id == -1:  # обычная ситуация
+                    # присваиваем юзеру team_id
+                    execute_query(f"UPDATE users SET users.team_id = {team_id} WHERE users.name = \"{user_name}\"")
+                    # увеличиваем в команде счётчик members_amount
+                    execute_query(f"UPDATE teams SET teams.members_amount = teams.members_amount + 1 "
+                                  f"WHERE teams.id = {team_id}")
+                    await inter.response.send_message(f"Пользователь **{user_name.mention}** добавлен в команду\n"
+                                                      f"-# Не забудь использовать команду /recalculate-score",
                                                       ephemeral=True)
+                elif user_team_id == team_id:
+                    await inter.response.send_message(f"Пользователь {user_name.mention} уже состоит в этой команде",
+                                                      ephemeral=True)
+                    return
+                elif user_team_id != team_id:  # пользователь состоит в другой команде
+                    another_team_channel_id = read_query(f"SELECT channel_id_str FROM teams "
+                                                         f"WHERE teams.id = {user_team_id}")
+                    another_team_channel_id = int(another_team_channel_id[0][0])
+                    team_thread = inter.guild.get_thread(another_team_channel_id)
+                    await inter.response.send_message(f"Пользователь {user_name.mention} уже состоит в "
+                                                      f"команде {team_thread.mention}", ephemeral=True)
                     return
             else:
                 await inter.response.send_message(f"Пользователь {user_name.mention} "
                                                   f"не зарегистрирован (его нет в БД)", ephemeral=True)
                 return
-
-            # присваиваем юзеру team_id
-            execute_query(f"UPDATE users SET users.team_id = {team_id} WHERE users.name = \"{user_name}\"")
-            # увеличиваем в команде счётчик members_amount
-            execute_query(
-                f"UPDATE teams SET teams.members_amount = teams.members_amount + 1 WHERE teams.id = {team_id}")
-            await inter.response.send_message(f"Пользователь **{user_name.mention}** добавлен в команду",
-                                              ephemeral=True)
         except disnake.DiscordException as ex:
             await inter.response.send_message(f"Bruh. Что-то пошло не так. Напиши разработчику\n"
                                               f"Ошибка: {ex}", ephemeral=True)
@@ -146,16 +156,18 @@ class Organizer(commands.Cog):
             # уменьшаем в команде счётчик members_amount
             execute_query(
                 f"UPDATE teams SET teams.members_amount = teams.members_amount - 1 WHERE teams.id = {team_id}")
-            await interaction.response.send_message(f"Пользователь **{user_name.mention}** исключен из команды",
+            await interaction.response.send_message(f"Пользователь **{user_name.mention}** исключен из команды\n"
+                                                    f"-# Не забудь использовать команду /recalculate-score",
                                                     ephemeral=True)
         except disnake.DiscordException as ex:
             await interaction.response.send_message(f"Bruh. Что-то пошло не так. Напиши разработчику\n"
                                                     f"Ошибка: {ex}", ephemeral=True)
             print(ex)
 
-    # TODO несрочно -> подумать, как реализовать грамотнее
+    # TODO подумать, как реализовать грамотнее
     # пересчитывает очки команды (использовать после добавления/удаления участника)
-    @commands.slash_command(name="marathon-recalculate-score", description="Пересчитать очки команды",
+    @commands.slash_command(name="marathon-recalculate-score",
+                            description="Пересчитать очки команды (исп. после add/delete user)",
                             default_member_permissions=disnake.Permissions(mention_everyone=True))
     @commands.has_role(ORGANIZER_ROLE_ID)
     async def recalculate_score(self, interaction: disnake.ApplicationCommandInteraction):
@@ -172,7 +184,8 @@ class Organizer(commands.Cog):
 
             # находим количество всех отчётов участников команды
             received_data = read_query(f"SELECT COUNT(reports.id) AS reports_amount, "
-                                       f"teams.members_amount "
+                                       f"teams.members_amount AS members_amount, "
+                                       f"teams.score_adjustment AS score_adjustment "
                                        f"FROM reports "
                                        f"JOIN users ON reports.user_id = users.id "
                                        f"JOIN teams ON users.team_id = teams.id "
@@ -182,23 +195,33 @@ class Organizer(commands.Cog):
                                                     f"FROM special_tasks "
                                                     f"WHERE team_id = {team_id}")
 
-            if received_data:
+            if received_data[0][0] != 0:  # если есть хотя бы один отчёт
+                print(received_data)
                 reports_amount = received_data[0][0]
                 members_amount = received_data[0][1]
+                adjustment_score = float(received_data[0][2])
                 sum_complete_members = received_data_special_task[0][0]
+                if sum_complete_members is None:  # если спец. задания не сдавали, надо выставить в 0, иначе баг с None
+                    sum_complete_members = 0
+
+                reports_score_upd = float(reports_amount / members_amount * 100)
+                special_score_upd = float(sum_complete_members / members_amount * 100)
+                final_score = reports_score_upd + special_score_upd + adjustment_score
 
                 # обновляем очки за обычные отчёты и очки за спец. задания
                 execute_query(f"UPDATE teams SET "
-                              f"teams.score = {reports_amount / members_amount * 100}, "
-                              f"teams.special_score = {sum_complete_members / members_amount * 100} "
+                              f"teams.score = {reports_score_upd}, "
+                              f"teams.special_score = {special_score_upd} "
                               f"WHERE teams.id = {team_id}")
-
                 await interaction.response.send_message(f"Очки пересчитаны\n"
-                                                        f"Теперь у команды:\n"
-                                                        f"{reports_amount / members_amount * 100} очков за отчёты\n"
-                                                        f"{sum_complete_members / members_amount * 100} очков "
-                                                        f"за спец. задания", ephemeral=True)
-
+                                                        f"Теперь у команды **{final_score}** очков\n"
+                                                        f"- {reports_score_upd} очков за отчёты\n"
+                                                        f"- {special_score_upd} очков за спец. задания\n"
+                                                        f"- {adjustment_score} скорректированных очков\n",
+                                                        ephemeral=True)
+            else:  # если ни одного отчёта у команды нет
+                await interaction.response.send_message(f"Кажется, у этой команды нет ни одного отчёта",
+                                                        ephemeral=True)
         except disnake.DiscordException as ex:
             await interaction.response.send_message(f"Bruh. Что-то пошло не так. Напиши разработчику\n"
                                                     f"Ошибка: {ex}", ephemeral=True)
@@ -274,7 +297,7 @@ class Organizer(commands.Cog):
                 if task_3 is not None:
                     tasks_format_text += f"3. {task_3}\n"
 
-            tasks_format_text += f"\n{marathon_role.mention}"
+            tasks_format_text += f"\n`{marathon_role.mention}` убрал тег пока что"
 
             check_task_text_view = Organizer.CheckTaskTextButton(practise_name, tasks_format_text)
             await interaction.response.send_message("## Убедитесь в правильности написания текста ✍\n"
@@ -296,7 +319,7 @@ class Organizer(commands.Cog):
             submit_practise_view = Organizer.SubmitPractiseButton()
             message = await interaction.channel.send(self.tasks_format_text, view=submit_practise_view)
             practise_thread = await interaction.channel.create_thread(name=self.practise_name, message=message,
-                                                                      auto_archive_duration=disnake.ThreadArchiveDuration.day)
+                                                                      auto_archive_duration=4320)
 
             # заполняем в БД данные о практике
             execute_query(f"INSERT INTO practises (practise_name, message_id) "
@@ -367,8 +390,13 @@ class Organizer(commands.Cog):
                 description=practise_text,
                 color=0x44944b
             )
-            practise_report_embed.set_author(name=interaction.author.display_name,
-                                             icon_url=interaction.author.avatar.url)
+
+            if interaction.author.avatar:  # проверка наличия аватарки
+                practise_report_embed.set_author(name=interaction.author.display_name,
+                                                 icon_url=interaction.author.avatar.url)
+            else:
+                practise_report_embed.set_author(name=interaction.author.display_name,
+                                                 icon_url=interaction.author.default_avatar.url)
 
             practise_thread = interaction.guild.get_thread(interaction.message.id)
             await practise_thread.send(f"Отчёт {interaction.author.mention}", embed=practise_report_embed)

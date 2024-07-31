@@ -42,7 +42,7 @@ class Marathon(commands.Cog):
         await check_missing_role(interaction, error)
 
 
-# TODO несрочно | сделать грамотное отражение времени (в дискорде чтоб дата показывалась)
+# TODO не срочно | сделать грамотное отражение времени (в дискорде чтоб дата показывалась)
 # https://www.youtube.com/watch?v=5cl_2xAyG0w&list=PLcsmHdQZxRKB7b8zKb2-aq9j3y7pZkQmP&index=7
 def get_time_until_start():
     now = datetime.now()
@@ -94,7 +94,6 @@ class WelcomeMarathonButton(disnake.ui.View):
 
     @disnake.ui.button(label="Задать вопрос", style=disnake.ButtonStyle.gray, emoji="❓")
     async def askQuestionButton(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
-        # await interaction.response.defer(with_message=False)
         ask_question_modal = AskQuestionModal()
         await interaction.response.send_modal(ask_question_modal)
 
@@ -109,14 +108,15 @@ class AskQuestionModal(disnake.ui.Modal):
     async def callback(self, interaction: ModalInteraction):
         channel = interaction.channel
         question_thread = await channel.create_thread(name="Вопрос от участника",
-                                                      type=disnake.ChannelType.private_thread)
+                                                      type=disnake.ChannelType.private_thread,
+                                                      invitable=False, auto_archive_duration=4320)
 
         question_text = interaction.text_values["question_text"]
         moderator_role = interaction.guild.get_role(MODERATOR_ROLE_ID)
         organizer_role = interaction.guild.get_role(ORGANIZER_ROLE_ID)
         await question_thread.send(f"### Вопрос от участника {interaction.author.mention}\n\n"
                                    f"{question_text}\n\n"
-                                   f"{moderator_role.mention}{organizer_role.mention}")
+                                   f"`{moderator_role.mention} {organizer_role.mention}` Убрал теги :)")
 
         await interaction.response.defer(with_message=False)
 
@@ -141,6 +141,8 @@ async def choice_format_pattern(inter: disnake.MessageInteraction):
 class ExtraRegMarathonButton(disnake.ui.View):
     def __init__(self):
         super().__init__()
+        if get_time_until_start() == "`Марафон уже начался!`":
+            self.extraRegMarathonButton.disabled = True
 
     @disnake.ui.button(label="Заполнить регистрацию заново", style=disnake.ButtonStyle.red, emoji="🖊")
     async def extraRegMarathonButton(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
@@ -163,15 +165,18 @@ class RegMarathonButton(disnake.ui.View):
     @disnake.ui.button(label="Регистрация на марафон", style=disnake.ButtonStyle.green, emoji="🖊")
     async def regMarathonButton(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
         await choice_format_pattern(inter)
-        self.stop()
-        # TODO после минут 13 ephemeral сообщение стало неактивным (кнопка не работает)
+        # TODO не срочно | после 3х минут ephemeral сообщение становится неактивным (кнопка не работает)
         # надо либо удаление ephemeral сообщения сделать, либо так, чтоб кнопка работала
 
-# TODO если марафон начался -> только соло участие
+    # async def on_timeout(self):
+
+
 # view выбора формата марафона (команда/соло)
 class ChoiceFormatMarathonButton(disnake.ui.View):
     def __init__(self):
         super().__init__()
+        if get_time_until_start() == "`Марафон уже начался!`":
+            self.team_button.disabled = True
 
     @disnake.ui.button(label="Участвовать в команде", style=disnake.ButtonStyle.green, emoji="🏆")
     async def team_button(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
@@ -199,7 +204,7 @@ class ChoiceFormatMarathonButton(disnake.ui.View):
 
         await give_role(interaction)
 
-        execute_query(f"INSERT INTO users (name, team_id, is_leader) VALUES (\"{interaction.author.name}\", NULL, 0);")
+        execute_query(f"INSERT INTO users (name, team_id, is_leader) VALUES (\"{interaction.author.name}\", NULL, NULL);")
         await interaction.response.edit_message("", view=None, embed=successful_reg_embed)
         self.stop()
 
@@ -241,7 +246,7 @@ class TimezonesDropdown(disnake.ui.StringSelect):
         )
 
     async def callback(self, inter: disnake.MessageInteraction):
-        # TODO кажется, можно сделать взятие GMT без костылей split -> использовать в SelectOption параметр value
+        # TODO не срочно | кажется, можно сделать взятие GMT без костылей split -> использовать в SelectOption параметр value
         # типа disnake.SelectOption(label="GMT+12 ~ Камчатка, Окленд", value="12", emoji="🕛"), но это не точно
         choice_leader_position_view = ChoiceLeaderPositionMarathonButton(int(self.values[0].split()[0][3:6]))
         choice_leader_position_embed = disnake.Embed(
