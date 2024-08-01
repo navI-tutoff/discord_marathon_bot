@@ -1,8 +1,5 @@
-def f(el: int):
-    print(el)
+from datetime import datetime
+from defines_config import MARATHON_START_DATE
 
 
-a = 123
-f(a)
-
-
+print(MARATHON_START_DATE < datetime.now())

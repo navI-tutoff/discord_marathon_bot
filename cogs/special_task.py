@@ -160,7 +160,7 @@ class SpecialTaskButton(disnake.ui.View):
 
     @disnake.ui.button(label="Сдать отчет за спец. задание", style=disnake.ButtonStyle.blurple, emoji="📝")
     async def specialTaskButton(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
-        # TODO сделать проверку, принадлежит ли участник команде, в которой отправлена кнопка
+        # TODO сделать проверку, принадлежит ли участник команде, в которой отправлена кнопка (p.s. хотя зачем?)
         if interaction.user.id in self.pass_members:
             await interaction.response.send_message("Вы уже отметились в спец. задании",
                                                     ephemeral=True)

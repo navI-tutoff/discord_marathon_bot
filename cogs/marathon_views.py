@@ -10,7 +10,7 @@ from db_config import read_query
 from disnake.ext import commands
 
 from defines_config import MARATHON_START_DATE
-from defines_config import REG_MARATHON_CHAT_ID, MAIN_COMMUNICATION_MARATHON_CHAT_ID, PRACTISE_CHAT_ID
+from defines_config import REG_MARATHON_CHAT_ID, MAIN_COMMUNICATION_MARATHON_CHAT_ID, FEED_CHAT_ID
 from defines_config import MARATHON_ROLE_ID, ORGANIZER_ROLE_ID, MODERATOR_ROLE_ID
 
 from errors_handling import check_missing_role
@@ -42,36 +42,6 @@ class Marathon(commands.Cog):
         await check_missing_role(interaction, error)
 
 
-# TODO не срочно | сделать грамотное отражение времени (в дискорде чтоб дата показывалась)
-# https://www.youtube.com/watch?v=5cl_2xAyG0w&list=PLcsmHdQZxRKB7b8zKb2-aq9j3y7pZkQmP&index=7
-def get_time_until_start():
-    now = datetime.now()
-    remaining_time = MARATHON_START_DATE - now
-
-    if remaining_time.total_seconds() < 0:
-        return "`Марафон уже начался!`"
-
-    days, remainder = divmod(remaining_time.total_seconds(), 86400)
-    hours, remainder = divmod(remainder, 3600)
-
-    string = f"Марафон начнётся "
-    if days % 10 == 1:
-        string += f"`через {int(days)} день "
-    elif days % 10 in [2, 3, 4]:
-        string += f"`через {int(days)} дня "
-    else:
-        string += f"`через {int(days)} дней "
-
-    if hours % 10 == 1:
-        string += f"{int(hours)} час`"
-    elif hours % 10 in [2, 3, 4]:
-        string += f"{int(hours)} часа`"
-    else:
-        string += f"{int(hours)} часов`"
-
-    return string
-
-
 # встречающее view для регистрации на марафоне
 class WelcomeMarathonButton(disnake.ui.View):
     def __init__(self):
@@ -79,7 +49,11 @@ class WelcomeMarathonButton(disnake.ui.View):
 
     @disnake.ui.button(label="Марафон отдыха", style=disnake.ButtonStyle.blurple, emoji="⛵")
     async def welcomeMarathonButton(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
-        time_until_start = get_time_until_start()
+        if MARATHON_START_DATE < datetime.now():  # если марафон начался
+            time_until_start = "Начался ещё " + disnake.utils.format_dt(MARATHON_START_DATE, style='R')
+        else:
+            time_until_start = "Начнётся " + disnake.utils.format_dt(MARATHON_START_DATE, style='R')
+
         received_user_data = read_query(f"SELECT * FROM users WHERE users.name = \"{inter.author.name}\"")
         if received_user_data:
             extra_reg_view = ExtraRegMarathonButton()
@@ -141,7 +115,7 @@ async def choice_format_pattern(inter: disnake.MessageInteraction):
 class ExtraRegMarathonButton(disnake.ui.View):
     def __init__(self):
         super().__init__()
-        if get_time_until_start() == "`Марафон уже начался!`":
+        if MARATHON_START_DATE < datetime.now():
             self.extraRegMarathonButton.disabled = True
 
     @disnake.ui.button(label="Заполнить регистрацию заново", style=disnake.ButtonStyle.red, emoji="🖊")
@@ -175,7 +149,7 @@ class RegMarathonButton(disnake.ui.View):
 class ChoiceFormatMarathonButton(disnake.ui.View):
     def __init__(self):
         super().__init__()
-        if get_time_until_start() == "`Марафон уже начался!`":
+        if MARATHON_START_DATE < datetime.now():
             self.team_button.disabled = True
 
     @disnake.ui.button(label="Участвовать в команде", style=disnake.ButtonStyle.green, emoji="🏆")
@@ -195,7 +169,7 @@ class ChoiceFormatMarathonButton(disnake.ui.View):
     async def solo_button(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
         successful_reg_embed = disnake.Embed(
             title="Теперь вы участник марафона!",
-            description=f"Следите за новостями марафона в {interaction.guild.get_channel(PRACTISE_CHAT_ID).mention}. "
+            description=f"Следите за новостями марафона в {interaction.guild.get_channel(FEED_CHAT_ID).mention}. "
                         f"Вам придёт уведомление, когда выйдет первый пост с заданиями. Пока напишите о целях "
                         f"на марафон и пообщайтесь с участниками в "
                         f"{interaction.guild.get_channel(MAIN_COMMUNICATION_MARATHON_CHAT_ID).mention}",
@@ -213,29 +187,29 @@ class ChoiceFormatMarathonButton(disnake.ui.View):
 class TimezonesDropdown(disnake.ui.StringSelect):
     def __init__(self):
         options = [
-            disnake.SelectOption(label="GMT-10 ~ Гонолулу", emoji="🕙"),
-            disnake.SelectOption(label="GMT-9 ~ Анкоридж, Фэрбенкс", emoji="🕘"),
-            disnake.SelectOption(label="GMT-8 ~ Лос-Анджелес, Сан-Франциско, Ванкувер", emoji="🕗"),
-            disnake.SelectOption(label="GMT-7 ~ Финикс, Денвер, Солт-Лейк-Сити", emoji="🕖"),
-            disnake.SelectOption(label="GMT-6 ~ Мехико, Чикаго, Хьюстон", emoji="🕕"),
-            disnake.SelectOption(label="GMT-5 ~ Нью-Йорк, Торонто, Монреаль", emoji="🕔"),
-            disnake.SelectOption(label="GMT-4 ~ Каракас, Сантьяго, Гавана", emoji="🕓"),
-            disnake.SelectOption(label="GMT-3 ~ Буэнос-Айрес, Монтевидео, Сан-Паулу", emoji="🕒"),
-            disnake.SelectOption(label="GMT-2 ~ Средний Атлантик", emoji="🕑"),
-            disnake.SelectOption(label="GMT-1 ~ Азорские острова, Кабо-Верде", emoji="🕐"),
-            disnake.SelectOption(label="GMT-0 ~ Лондон, Лиссабон, Дублин", emoji="🕛"),
-            disnake.SelectOption(label="GMT+1 ~ Берлин, Париж", emoji="🕐"),
-            disnake.SelectOption(label="GMT+2 ~ Калининград, Киев, Варшава", emoji="🕑"),
-            disnake.SelectOption(label="GMT+3 ~ Москва, Санкт-Петербург", emoji="🕒"),
-            disnake.SelectOption(label="GMT+4 ~ Дубай, Баку, Абу-Даби", emoji="🕓"),
-            disnake.SelectOption(label="GMT+5 ~ Екатеринбург, Ташкент, Алматы", emoji="🕔"),
-            disnake.SelectOption(label="GMT+6 ~ Омск", emoji="🕕"),
-            disnake.SelectOption(label="GMT+7 ~ Новосибирск, Бангкок, Красноярск", emoji="🕖"),
-            disnake.SelectOption(label="GMT+8 ~ Иркутск, Улан-Удэ", emoji="🕗"),
-            disnake.SelectOption(label="GMT+9 ~ Чита, Токио, Сеул", emoji="🕘"),
-            disnake.SelectOption(label="GMT+10 ~ Владивосток, Сидней", emoji="🕙"),
-            disnake.SelectOption(label="GMT+11 ~ Сахалин", emoji="🕚"),
-            disnake.SelectOption(label="GMT+12 ~ Камчатка, Окленд", emoji="🕛")
+            disnake.SelectOption(label="GMT-10 ~ Гонолулу", value="-10", emoji="🕙"),
+            disnake.SelectOption(label="GMT-9 ~ Анкоридж, Фэрбенкс", value="-9", emoji="🕘"),
+            disnake.SelectOption(label="GMT-8 ~ Лос-Анджелес, Сан-Франциско, Ванкувер", value="-8", emoji="🕗"),
+            disnake.SelectOption(label="GMT-7 ~ Финикс, Денвер, Солт-Лейк-Сити", value="-7", emoji="🕖"),
+            disnake.SelectOption(label="GMT-6 ~ Мехико, Чикаго, Хьюстон", value="-6", emoji="🕕"),
+            disnake.SelectOption(label="GMT-5 ~ Нью-Йорк, Торонто, Монреаль", value="-5", emoji="🕔"),
+            disnake.SelectOption(label="GMT-4 ~ Каракас, Сантьяго, Гавана", value="-4", emoji="🕓"),
+            disnake.SelectOption(label="GMT-3 ~ Буэнос-Айрес, Монтевидео, Сан-Паулу", value="-3", emoji="🕒"),
+            disnake.SelectOption(label="GMT-2 ~ Средний Атлантик", value="-2", emoji="🕑"),
+            disnake.SelectOption(label="GMT-1 ~ Азорские острова, Кабо-Верде", value="-1", emoji="🕐"),
+            disnake.SelectOption(label="GMT-0 ~ Лондон, Лиссабон, Дублин", value="0", emoji="🕛"),
+            disnake.SelectOption(label="GMT+1 ~ Берлин, Париж", value="1", emoji="🕐"),
+            disnake.SelectOption(label="GMT+2 ~ Калининград, Киев, Варшава", value="2", emoji="🕑"),
+            disnake.SelectOption(label="GMT+3 ~ Москва, Санкт-Петербург", value="3", emoji="🕒"),
+            disnake.SelectOption(label="GMT+4 ~ Дубай, Баку, Абу-Даби", value="4", emoji="🕓"),
+            disnake.SelectOption(label="GMT+5 ~ Екатеринбург, Ташкент, Алматы", value="5", emoji="🕔"),
+            disnake.SelectOption(label="GMT+6 ~ Омск", value="6", emoji="🕕"),
+            disnake.SelectOption(label="GMT+7 ~ Новосибирск, Бангкок, Красноярск", value="7", emoji="🕖"),
+            disnake.SelectOption(label="GMT+8 ~ Иркутск, Улан-Удэ", value="8", emoji="🕗"),
+            disnake.SelectOption(label="GMT+9 ~ Чита, Токио, Сеул", value="9", emoji="🕘"),
+            disnake.SelectOption(label="GMT+10 ~ Владивосток, Сидней", value="10", emoji="🕙"),
+            disnake.SelectOption(label="GMT+11 ~ Сахалин", value="11", emoji="🕚"),
+            disnake.SelectOption(label="GMT+12 ~ Камчатка, Окленд", value="12", emoji="🕛")
         ]
 
         super().__init__(
@@ -246,9 +220,7 @@ class TimezonesDropdown(disnake.ui.StringSelect):
         )
 
     async def callback(self, inter: disnake.MessageInteraction):
-        # TODO не срочно | кажется, можно сделать взятие GMT без костылей split -> использовать в SelectOption параметр value
-        # типа disnake.SelectOption(label="GMT+12 ~ Камчатка, Окленд", value="12", emoji="🕛"), но это не точно
-        choice_leader_position_view = ChoiceLeaderPositionMarathonButton(int(self.values[0].split()[0][3:6]))
+        choice_leader_position_view = ChoiceLeaderPositionMarathonButton(int(self.values[0]))
         choice_leader_position_embed = disnake.Embed(
             title="Вы можете стать лидером своей команды",
             description="Текст текст текст",
@@ -281,7 +253,7 @@ class ChoiceLeaderPositionMarathonButton(disnake.ui.View):
         return disnake.Embed(
             title="Успешная регистрация на марафоне",
             description=f"Вам придет уведомление, когда мы создадим чат вашей команды. "
-                        f"Следите за новостями марафона в {interaction.guild.get_channel(PRACTISE_CHAT_ID).mention}."
+                        f"Следите за новостями марафона в {interaction.guild.get_channel(FEED_CHAT_ID).mention}."
                         f" Напишите о целях на марафон и пообщайтесь с другими участниками в "
                         f"{interaction.guild.get_channel(MAIN_COMMUNICATION_MARATHON_CHAT_ID).mention}",
             color=0x7aefb0

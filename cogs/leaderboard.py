@@ -1,5 +1,7 @@
 from main import disnake, commands, tasks
 
+from datetime import datetime
+
 from db_config import pymysql, execute_query, read_query
 
 from defines_config import LEADERBOARD_CHAT_ID, LEADERBOARD_MSG_ID
@@ -26,17 +28,19 @@ class Leaderboard(commands.Cog):
                 description += "### Отстающие\n"
             elif counter == 4:
                 description += "### Догоняющие\n"
-            elif counter == 1:
-                description += "🥇 "
-            elif counter == 2:
-                description += "🥈 "
-            elif counter == 3:
-                description += "🥉 "
+            # elif counter == 1:
+            #     description += "🥇 "
+            # elif counter == 2:
+            #     description += "🥈 "
+            # elif counter == 3:
+            #     description += "🥉 "
 
             # TODO сделать красивое форматирование
             description += f"{counter}. {team[0]}: {team[1]}\n"
             counter += 1
 
+        description += (f"\n\n Обновлено "
+                        f"{disnake.utils.format_dt(datetime.now(), style='R')}")
         embed = disnake.Embed(
             description=description,
             color=0xffcc4d

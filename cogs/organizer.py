@@ -1,3 +1,5 @@
+import datetime
+
 import disnake
 from disnake import ModalInteraction
 
@@ -287,7 +289,11 @@ class Organizer(commands.Cog):
     async def best_practise(self, interaction: disnake.ApplicationCommandInteraction,
                             practise_name: str, task_1: str, task_2: str = None, task_3: str = None):
         try:
-            marathon_role = interaction.guild.get_role(MARATHON_ROLE_ID)
+            feed_chat = interaction.guild.get_channel(FEED_CHAT_ID)
+            if interaction.channel != feed_chat:
+                await interaction.response.send_message(f"Отправлять лучшие практики можно "
+                                                        f"только в {feed_chat.mention}", ephemeral=True)
+                return
 
             tasks_format_text = f"# 🎯 Задания\n1. {task_1}\n"
 
@@ -297,6 +303,7 @@ class Organizer(commands.Cog):
                 if task_3 is not None:
                     tasks_format_text += f"3. {task_3}\n"
 
+            marathon_role = interaction.guild.get_role(MARATHON_ROLE_ID)
             tasks_format_text += f"\n`{marathon_role.mention}` убрал тег пока что"
 
             check_task_text_view = Organizer.CheckTaskTextButton(practise_name, tasks_format_text)

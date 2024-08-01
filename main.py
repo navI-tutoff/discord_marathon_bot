@@ -5,9 +5,7 @@ from disnake.ext import commands, tasks
 from cogs.marathon_views import *
 from cogs.organizer import Organizer
 
-from defines_config import REG_MARATHON_MSG_ID
-from defines_config import REG_MARATHON_CHAT_ID
-from defines_config import PRACTISE_CHAT_ID
+from defines_config import REG_MARATHON_MSG_ID, REG_MARATHON_CHAT_ID, FEED_CHAT_ID
 
 # === intents ===
 # intents = disnake.Intents.default()
@@ -32,7 +30,7 @@ async def on_ready():
             await message.edit(view=welcome_view)
 
     # кнопки лучших практик
-    practise_channel = bot.get_channel(PRACTISE_CHAT_ID)
+    practise_channel = bot.get_channel(FEED_CHAT_ID)
     if practise_channel:
         practise_buttons = read_query(f"SELECT practise_name, message_id FROM practises")
         for button in practise_buttons:
