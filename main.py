@@ -80,6 +80,6 @@ async def say(ctx, text):
     await ctx.send(text)
 
 
-bot.run("MTI0MzgyMzAyOTE4MDY5ODY2NA.GxMCs5.y_pYr3lm5fY0x484HyMTTGbgEF48gFY3bMeY3Y")
+bot.run("MTI0MzgyMzAyOTE4MDY5ODY2NA.G3CypR.UBJ316QuDTFDT8-0__Z-sKyXnL1Z-Vf74KQvCw")
 
-# TODO сделать try catch и т.п. обработки
+# TODO сделать try-catch, вывод sql-запросов в файл и т.п. фишки
